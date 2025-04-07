@@ -1,5 +1,19 @@
 name: Build and Push to ECR & GHCR
 
+inputs:
+  aws_account_id:
+    required: true
+    description: "AWS Account ID"
+  aws_region:
+    required: true
+    description: "AWS Region"
+  aws_role_arn:
+    required: true
+    description: "AWS Role ARN to assume"
+  github_token:
+    required: true
+    description: "GitHub token for authentication"
+
 runs:
   using: "composite"
   steps:
@@ -9,20 +23,21 @@ runs:
       with:
         images: |
           ghcr.io/${{ github.repository }}
-          ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ github.repository }}
+          ${{ inputs.aws_account_id }}.dkr.ecr.${{ inputs.aws_region }}.amazonaws.com/${{ github.repository }}
 
     - name: Configure AWS Credentials (OIDC)
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-        aws-region: ${{ secrets.AWS_REGION }}
+        role-to-assume: ${{ inputs.aws_role_arn }}
+        aws-region: ${{ inputs.aws_region }}
 
     - name: Login to Amazon ECR
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
     - name: Login to GitHub Container Registry
-      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      shell: bash
+      run: echo "${{ inputs.github_token }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
     - name: Build and push Docker Image
       uses: docker/build-push-action@v6
